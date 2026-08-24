@@ -92,6 +92,10 @@ function makeDeps(token?: string) {
     })),
     getActiveId: vi.fn(async (): Promise<string | undefined> => undefined),
     setActive: vi.fn(async () => {}),
+    compose: vi.fn(async () => ({
+      content: 'mixed-port: 7890\nrules:\n  - MATCH,DIRECT\n',
+      composition: [],
+    })),
     rollback: vi.fn(async () => true),
     resetActive: vi.fn(async () => {}),
     getSection: vi.fn(async (): Promise<unknown> => null),
@@ -1289,15 +1293,14 @@ describe('createControlRouter — config sections', () => {
   let srv: Awaited<ReturnType<typeof mount>>
   afterEach(async () => srv?.close())
 
-  it('gET /api/control/config/section?key= returns the active profile section', async () => {
+  it('gET /api/control/config/section?key= returns the composed section', async () => {
     const deps = makeDeps()
     deps.profiles.getActiveId = vi.fn(async () => 'p1')
-    deps.profiles.getSection = vi.fn(async () => ['MATCH,DIRECT'])
     srv = await mount(deps)
     const res = await fetch(`${srv.base}/api/control/config/section?key=rules`)
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(['MATCH,DIRECT'])
-    expect(deps.profiles.getSection).toHaveBeenCalledWith('p1', 'rules')
+    expect(deps.profiles.compose).toHaveBeenCalledWith('p1')
   })
 
   it('gET /api/control/config/section returns null when there is no active profile', async () => {
@@ -1350,6 +1353,45 @@ describe('createControlRouter — config sections', () => {
     // restart, so live connections survive while the change is persisted.
     expect(deps.supervisor.restart).not.toHaveBeenCalled()
     expect(deps.supervisor.getState).toHaveBeenCalled()
+  })
+
+  it('pUT /api/control/config/section stores remote settings in a scoped merge overlay', async () => {
+    const deps = makeDeps()
+    deps.profiles.getActiveId = vi.fn(async () => 'p1')
+    deps.profiles.list = vi.fn(async () => [
+      { id: 'p1', name: 'sub', type: 'remote' as const, updatedAt: 1 },
+    ])
+    deps.profiles.create = vi.fn(async () => ({
+      id: 'settings',
+      name: 'MetaCubeXD persistent settings',
+      type: 'merge' as const,
+      baseProfileId: 'p1',
+      updatedAt: 2,
+    }))
+    srv = await mount(deps)
+    const res = await fetch(`${srv.base}/api/control/config/section`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key: 'allow-lan', value: true, restart: false }),
+    })
+    expect(res.status).toBe(200)
+    expect(deps.profiles.create).toHaveBeenCalledWith({
+      name: 'MetaCubeXD persistent settings',
+      type: 'merge',
+      content: '{}\n',
+      baseProfileId: 'p1',
+    })
+    expect(deps.profiles.setSection).toHaveBeenCalledWith(
+      'settings',
+      'allow-lan',
+      true,
+    )
+    expect(deps.profiles.setSection).not.toHaveBeenCalledWith(
+      'p1',
+      'allow-lan',
+      true,
+    )
+    expect(deps.profiles.setActive).toHaveBeenCalledWith('p1')
   })
 
   it('pUT /api/control/config/section passes a null value through (delete)', async () => {

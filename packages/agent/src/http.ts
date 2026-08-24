@@ -35,8 +35,19 @@ import {
 import { SubscriptionFetchError } from './profiles'
 import { TunPreconditionError } from './tun'
 import { createWebdavClient as defaultCreateWebdavClient } from './webdav'
+import { parse } from 'yaml'
 
 const BACKUP_FILENAME = 'metacubexd-backup.json'
+const CONFIG_SETTINGS_OVERLAY = 'MetaCubeXD persistent settings'
+
+function readTopLevelSection(content: string, key: string): unknown {
+  const parsed = parse(content) as unknown
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return null
+  }
+  const value = (parsed as Record<string, unknown>)[key]
+  return value === undefined ? null : value
+}
 
 async function withSubscriptionHttpError<T>(
   action: () => Promise<T>,
@@ -489,15 +500,18 @@ export function createControlRouter(deps: ControlRouterDeps): App {
   )
 
   // ---- Config sections (top-level key read/write on the active profile) ----
-  // GET reads one parsed section (null when absent / no active profile). PUT
-  // replaces that section on the active profile content, then re-activates
-  // (re-composes + writes activeConfigPath) and restarts the kernel.
+  // GET reads the COMPOSED value so the UI reflects persistent overrides. PUT
+  // writes remote-profile changes to a scoped merge overlay instead of editing
+  // the downloaded subscription source. A later subscription refresh can then
+  // replace the source without discarding user settings.
   router.get(
     `${PREFIX}/config/section`,
     defineEventHandler(async (event) => {
       const key = String(getQuery(event).key ?? '')
       const activeId = await profiles.getActiveId()
-      const value = activeId ? await profiles.getSection(activeId, key) : null
+      const value = activeId
+        ? readTopLevelSection((await profiles.compose(activeId)).content, key)
+        : null
       // Serialize explicitly so an absent section / no-active-profile still
       // yields a JSON `null` body (h3 would 204 a bare null return).
       setResponseHeader(event, 'content-type', 'application/json')
@@ -522,7 +536,32 @@ export function createControlRouter(deps: ControlRouterDeps): App {
         // the rule/network editors restart once per save.
         restart?: boolean
       }
-      await profiles.setSection(activeId, body.key, body.value)
+      const list = await profiles.list()
+      const active = list.find((meta) => meta.id === activeId)
+      if (!active) {
+        setResponseStatus(event, 409)
+        return { error: 'active profile not found' }
+      }
+
+      if (active.type === 'remote') {
+        let overlay = list.find(
+          (meta) =>
+            meta.type === 'merge' &&
+            meta.baseProfileId === activeId &&
+            meta.name === CONFIG_SETTINGS_OVERLAY,
+        )
+        if (!overlay) {
+          overlay = await profiles.create({
+            name: CONFIG_SETTINGS_OVERLAY,
+            type: 'merge',
+            content: '{}\n',
+            baseProfileId: activeId,
+          })
+        }
+        await profiles.setSection(overlay.id, body.key, body.value)
+      } else {
+        await profiles.setSection(activeId, body.key, body.value)
+      }
       await profiles.setActive(activeId)
       if (body.restart === false) return supervisor.getState()
       return supervisor.restart()

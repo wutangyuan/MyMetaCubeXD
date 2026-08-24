@@ -47,7 +47,7 @@ COPY --from=server  /repo/apps/server/.output ./
 COPY --from=ui      /repo/packages/ui/.output/public ./ui-dist
 COPY --from=kernel  /usr/local/bin/mihomo /usr/local/bin/mihomo
 COPY apps/server/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 ENV NODE_ENV=production \
     UI_DIST=/app/ui-dist \
     MIHOMO_BIN=/usr/local/bin/mihomo \
