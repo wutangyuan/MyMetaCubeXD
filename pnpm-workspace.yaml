@@ -22,12 +22,12 @@ catalog:
   '@tabler/icons-vue': ^3.46.0
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
-  '@tanstack/vue-query': ^5.101.4
+  '@tanstack/vue-query': ^5.102.8
   '@tanstack/vue-virtual': ^3.13.36
   '@types/byte-size': ^8.1.2
   '@types/d3': ^7.4.3
   '@types/markdown-it': ^14.2.0
-  '@types/node': ^26.2.0
+  '@types/node': ^26.4.0
   '@types/sortablejs': ^1.15.9
   '@vite-pwa/nuxt': ^1.1.1
   '@vitest/coverage-v8': ^4.1.11
@@ -37,12 +37,12 @@ catalog:
   byte-size: ^9.0.1
   commitlint: ^21.2.2
   d3: ^7.9.0
-  daisyui: ^5.7.20
+  daisyui: ^5.7.22
   dayjs: ^1.11.23
-  electron: ^43.4.1
+  electron: ^44.0.0
   electron-builder: ^26.0.0
   electron-vite: ^5.0.0
-  eslint: ^10.9.0
+  eslint: ^10.9.1
   eslint-plugin-format: ^2.0.1
   # NEW-SUBSYSTEM deps (consumed by the future agent/server/desktop packages
   # in plans 02-05, NOT by packages/ui). These are brand-new catalog entries
@@ -50,12 +50,12 @@ catalog:
   # "ZERO version bumps" rule still holds (it forbids changing the version of
   # an already-present dep, not adding a new one). Versions come from spec §1.
   h3: ^1.15.11
-  highcharts: ^13.0.1
+  highcharts: ^13.0.2
   husky: ^9.1.7
   jsdom: ^30.0.1
-  ky: ^2.0.2
-  lint-staged: ^17.3.0
-  markdown-it: ^15.0.0
+  ky: ^2.1.0
+  lint-staged: ^17.4.1
+  markdown-it: ^15.0.1
   match-sorter: ^8.3.0
   meta-json-schema: ^1.19.30
   # PINNED, do not bump past 0.52.x. monaco-yaml@5.5.1 (latest) pulls
@@ -88,8 +88,8 @@ catalog:
   uqr: ^0.1.2
   vite: 8.2.2
   vitest: ^4.1.11
-  vue: ^3.5.41
-  vue-router: ^5.2.0
+  vue: ^3.5.42
+  vue-router: ^5.3.0
   vue-sonner: ^2.0.9
   vue-tsc: ^3.3.11
   yaml: ^2.9.0
